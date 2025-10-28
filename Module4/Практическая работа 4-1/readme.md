@@ -1,4 +1,4 @@
-- [airflow.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/airflow.png)
-- [docker compose up -d.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/docker%20compose%20up%20-d.png)
-- [minio.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/minio.png)
-- [quality_management_dbt_external_graph.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/quality_management_dbt_external_graph.png)
+- [airflow.png](https://github.com/d10ne/DEP-MGPU/blob/main/Module4/Практическая%20работа%204-1/airflow.png)
+- [docker compose up -d.png](https://github.com/d10ne/DEP-MGPU/blob/main/Module4/Практическая%20работа%204-1/docker%20compose%20up%20-d.png)
+- [minio.png](https://github.com/d10ne/DEP-MGPU/blob/main/Module4/Практическая%20работа%204-1/minio.png)
+- [quality_management_dbt_external_graph.png](https://github.com/d10ne/DEP-MGPU/blob/main/Module4/Практическая%20работа%204-1/quality_management_dbt_external_graph.png)
