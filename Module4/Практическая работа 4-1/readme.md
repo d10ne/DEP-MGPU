@@ -1,0 +1,4 @@
+- [airflow.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/airflow.png)
+- [docker compose up -d.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/docker%20compose%20up%20-d.png)
+- [minio.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/minio.png)
+- [quality_management_dbt_external_graph.png](https://github.com/YOUR_USERNAME/YOUR_REPO/blob/BRANCH/path/to/quality_management_dbt_external_graph.png)
