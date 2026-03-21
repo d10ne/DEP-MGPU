@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: data-loader-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: loader
+        image: osrm-loader:v1
+        imagePullPolicy: Never
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: db-secret
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: data-pvc
+      restartPolicy: OnFailure
