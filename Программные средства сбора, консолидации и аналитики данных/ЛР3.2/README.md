@@ -6,7 +6,7 @@
 | Что | Где |
 |---|---|
 | 📓 Блокнот с решением (выполнен, с выводами ячеек) | [`lab3_student_20_points.ipynb`](lab3_student_20_points.ipynb) |
-| 📊 Дашборд DataLens | [ЛР3_вариант_02_выручка_по_категориям]([https://datalens.ru/hu45205rtzcg0-lr3-variant-02-vyruchka-po-kategoriyam](https://datalens.yandex/hu45205rtzcg0?_share_link=public)) |
+| 📊 Дашборд DataLens | [ЛР3_вариант_02_выручка_по_категориям](https://datalens.yandex/hu45205rtzcg0?_share_link=public) |
 | 🧾 SQL витрины | [`sql/dm_v02_category_sales.sql`](sql/dm_v02_category_sales.sql) |
 | 📖 Словарь полей витрины | [`data/dm_v02_category_sales_dictionary.csv`](data/dm_v02_category_sales_dictionary.csv) |
 
