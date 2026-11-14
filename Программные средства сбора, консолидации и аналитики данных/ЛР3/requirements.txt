@@ -1,0 +1,9 @@
+# Python-зависимости конвейера. Ставятся в образ Airflow при сборке (Dockerfile:
+# pip install "apache-airflow==2.5.0" -r requirements.txt). Базовый образ apache/airflow:2.5.0-python3.8
+# → pip подбирает версии под Python 3.8 (фактические версии: docker compose exec scheduler pip list;
+# в прогоне: pandas 1.5.2, kagglehub 0.2.9, kaggle 1.7.4.5, psycopg2-binary 2.9.10, providers-postgres 5.3.1).
+pandas
+kaggle
+kagglehub
+psycopg2-binary
+apache-airflow-providers-postgres

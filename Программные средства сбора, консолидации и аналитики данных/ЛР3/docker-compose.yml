@@ -1,0 +1,178 @@
+# Окружение ЛР: Kaggle → Airflow → PostgreSQL → Superset.
+# Запуск: ./setup_kaggle.sh && docker compose up -d
+#
+# Сервис              Порт на хосте   Назначение
+# webserver           8080            Airflow UI (admin / admin)
+# scheduler           —               планировщик и выполнение задач (LocalExecutor)
+# postgres            5432 *          служебная БД метаданных Airflow
+# analytics_postgres  5433            аналитическая БД: RAW, STG, журналы, витрина
+# superset            8088            Superset UI (admin / admin)
+# pgadmin             5050            pgAdmin (admin@admin.com / admin)
+# redis               6379            кэш Superset
+#
+# * если порт 5432 на хосте занят (например, локальным PostgreSQL), задайте в .env
+#   AIRFLOW_META_DB_PORT=15432 — внутри Docker-сети сервисы всё равно ходят на 5432.
+
+name: videogames-lab        # имя проекта фиксировано, чтобы не зависеть от названия папки
+
+x-airflow-common: &airflow-common
+  build: .
+  image: videogames-airflow:2.5.0
+  # UID пользователя хоста (пишется в .env скриптом setup_kaggle.sh), группа root —
+  # так контейнер может читать dags/.kaggle (chmod 600) и писать в dags/data.
+  user: "${AIRFLOW_UID:-50000}:0"
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    # учебный ключ для локального стенда (нужен одинаковым webserver и scheduler для чтения логов)
+    AIRFLOW__WEBSERVER__SECRET_KEY: lab-videogames-local-secret
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./dags/.kaggle:/home/airflow/.kaggle      # kaggle.json (копию кладёт setup_kaggle.sh)
+    - airflow-logs:/opt/airflow/logs
+  depends_on: &airflow-depends
+    postgres:
+      condition: service_healthy
+    analytics_postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:12-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "${AIRFLOW_META_DB_PORT:-5432}:5432"
+    volumes:
+      - airflow-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  analytics_postgres:
+    image: postgres:12-alpine
+    environment:
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: analytics
+      POSTGRES_DB: analytics
+    ports:
+      - "5433:5432"
+    volumes:
+      - analytics-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "analytics", "-d", "analytics"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Одноразовая инициализация: схема метаданных, пользователь admin/admin,
+  # подключение analytics_postgres (то же, что вручную в Admin → Connections).
+  airflow-init:
+    <<: *airflow-common
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        airflow db upgrade
+        airflow users create --username admin --password admin --role Admin \
+          --firstname Admin --lastname User --email admin@example.com || true
+        airflow connections get analytics_postgres >/dev/null 2>&1 || \
+          airflow connections add analytics_postgres \
+            --conn-type postgres --conn-host analytics_postgres --conn-schema analytics \
+            --conn-login analytics --conn-password analytics --conn-port 5432
+    restart: "no"
+
+  webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  superset:
+    image: apache/superset:3.1.1
+    environment:
+      SUPERSET_SECRET_KEY: lab-videogames-superset-local-secret
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./superset_config.py:/app/superset_config.py:ro
+      - superset-home:/app/superset_home
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        superset db upgrade
+        superset fab create-admin --username admin --password admin \
+          --firstname Admin --lastname User --email admin@example.com || true
+        superset init
+        exec /usr/bin/run-server.sh
+    depends_on:
+      redis:
+        condition: service_healthy
+      analytics_postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  pgadmin:
+    # версия закреплена: в pgAdmin 9.x «ERD For Database» на PostgreSQL 12 падает с ошибкой
+    # "column att.attcompression does not exist" (колонка есть только с PostgreSQL 14)
+    image: dpage/pgadmin4:8.14
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      # сервер analytics_postgres регистрируется автоматически при первом запуске (пароль: analytics)
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      - analytics_postgres
+    restart: unless-stopped
+
+volumes:
+  airflow-db:
+  analytics-db:
+  airflow-logs:
+  superset-home:
+  pgadmin-data:
